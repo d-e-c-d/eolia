@@ -22,9 +22,21 @@ const uint8_t PIN_NTC      = A0;  // 5 V -> 10 k -> A0 -> NTC 10 k -> GND
 const uint8_t ADR_INA_PROD   = 0x40; // INA219 n°1 : sortie générateur
 const uint8_t ADR_INA_CHARGE = 0x41; // INA219 n°2 : batterie vers lampe (pont A0 soudé)
 const uint8_t AIMANTS_PAR_TOUR = 1;  // nombre d'aimants collés sur l'axe
-const float   NTC_BETA  = 3950.0;
-const float   NTC_R0    = 10000.0;   // 10 k à 25 °C
-const float   NTC_RSERIE = 10000.0;
+
+// ---------- Calibration (python outils/supervision.py --calib, voir docs/calibration.md) ----------
+// Valeur corrigée = gain * valeur brute + décalage. Valeurs neutres tant que rien n'est calibré.
+const float CAL_VGEN_GAIN       = 1.0;
+const float CAL_VGEN_DECALAGE   = 0.0;    // V
+const float CAL_IGEN_GAIN       = 1.0;
+const float CAL_IGEN_DECALAGE   = 0.0;    // A
+const float CAL_VBAT_GAIN       = 1.0;
+const float CAL_VBAT_DECALAGE   = 0.0;    // V
+const float CAL_ILAMPE_GAIN     = 1.0;
+const float CAL_ILAMPE_DECALAGE = 0.0;    // A
+// Thermistance : modèle bêta, R0 ramenée à 25 °C, RSERIE mesurée hors circuit au multimètre
+const float NTC_BETA   = 3950.0;
+const float NTC_R0     = 10000.0;    // ohms à 25 °C
+const float NTC_RSERIE = 10000.0;    // ohms
 
 // ---------- Seuils de protection ----------
 const float V_GEN_MAX      = 25.0;  // V : l'INA219 accepte 26 V au maximum

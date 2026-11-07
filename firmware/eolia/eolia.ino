@@ -185,6 +185,20 @@ void reinitialiser() {
   envoyerConsignes();
 }
 
+// Valeurs brutes (sans correction) moyennées sur 16 lectures, pour outils/supervision.py --calib
+void envoyerCalibration() {
+  Brutes b;
+  acq.lireBrutes(b, 16);
+  Serial.print(F("C,"));
+  Serial.print(b.vGen, 3);         Serial.print(',');
+  Serial.print(b.iGen, 4);         Serial.print(',');
+  Serial.print(b.vBat, 3);         Serial.print(',');
+  Serial.print(b.iLampe, 4);       Serial.print(',');
+  Serial.print(b.adcNtc, 1);       Serial.print(',');
+  Serial.print(acq.inaProdOk());   Serial.print(',');
+  Serial.println(acq.inaChargeOk());
+}
+
 void executer(char *c) {
   for (char *p = c; *p; p++) *p = toupper(*p);
   char *arg = strchr(c, ' ');
@@ -209,8 +223,9 @@ void executer(char *c) {
     reinitialiser();
   } else if (!strcmp(c, "RAZ")) { reinitialiser();
   } else if (!strcmp(c, "STAT")) { envoyerStat(); return;
+  } else if (!strcmp(c, "CAL")) { envoyerCalibration(); return;
   } else if (!strcmp(c, "AIDE")) {
-    Serial.println(F("I,MODE AUTO|MANU  LAMPE 0|1  RESERVE n  OK  NON  FORCER 0|1  SIM 0..4  RAZ  STAT"));
+    Serial.println(F("I,MODE AUTO|MANU  LAMPE 0|1  RESERVE n  OK  NON  FORCER 0|1  SIM 0..4  RAZ  STAT  CAL"));
     return;
   } else {
     Serial.println(F("I,commande inconnue (AIDE)"));

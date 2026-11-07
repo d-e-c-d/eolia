@@ -61,14 +61,15 @@ firmware/eolia/
   agents.h           les quatre agents et leurs règles de décision
   bus.h              bus de messages entre agents (sans allocation dynamique)
   mesures.h          lecture des capteurs et scénarios de simulation
-  config.h           brochage et seuils (seul endroit à calibrer)
+  config.h           brochage, seuils et coefficients de calibration
 outils/
-  supervision.py     affichage, enregistrement CSV, commandes, banc d'essai
+  supervision.py     affichage, enregistrement CSV, commandes, banc d'essai, calibration
 tests/
   test_natif.cpp     tests de la logique des agents sur PC
   stubs/             substituts d'Arduino.h, Wire.h, Adafruit_INA219.h
 docs/
   cablage.md         brochage et circuit de puissance
+  calibration.md     calibration des INA219 et de la NTC au multimètre
   protocole_serie.md trames Arduino vers PC et commandes PC vers Arduino
 platformio.ini       compilation avec PlatformIO
 ```
@@ -84,6 +85,7 @@ pio device monitor
 pip install pyserial
 python outils/supervision.py --port COM3          # mesures, CSV, commandes
 python outils/supervision.py --port COM3 --banc   # banc d'essai automatique
+python outils/supervision.py --port COM3 --calib  # calibration au multimètre
 
 # Tests sans matériel
 g++ -std=c++17 -Itests/stubs -o test tests/test_natif.cpp && ./test
@@ -121,7 +123,7 @@ PC sont fonctionnels ; la logique des agents est validée en simulation.
 
 Prochaines étapes :
 
-1. Calibrer les INA219 et la NTC au multimètre (coefficients dans `config.h`).
+1. Calibrer les INA219 et la NTC au multimètre : l'assistant `--calib` est prêt, la procédure est dans [`docs/calibration.md`](docs/calibration.md).
 2. Affiner l'estimation de l'état de charge (comptage d'énergie pendant la charge).
 3. Tracer les courbes puissance / vitesse de rotation à partir des CSV pour le poster.
 

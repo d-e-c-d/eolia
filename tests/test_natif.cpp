@@ -55,6 +55,14 @@ int main(){
   { Systeme S; S.init(2,false,false); for(int i=0;i<5;i++) S.pas(); S.s.repondre(false,S.bus); S.distribuer();
     for(int i=0;i<20;i++) S.pas();
     if(S.s.propositionEnAttente){ printf("ECHEC : propositions repetees apres refus\n"); echecs++; } else printf("Mode manuel : refus respecte, OK\n"); }
+  // Calibration : correction linéaire et modèle bêta de la NTC
+  { bool ok = std::fabs(corriger(12.0f, 1.02f, -0.05f) - 12.19f) < 1e-4;
+    float t25 = temperatureNtc(511.5f);                 // pont équilibré : R = RSERIE = R0, donc 25 °C
+    float rChaud = NTC_R0 * std::exp(NTC_BETA * (1.0 / 323.15 - 1.0 / 298.15));  // R attendue à 50 °C
+    float t50 = temperatureNtc(1023.0 * rChaud / (rChaud + NTC_RSERIE));
+    ok = ok && std::fabs(t25 - 25) < 0.05 && std::fabs(t50 - 50) < 0.1
+            && temperatureNtc(0) == -99 && temperatureNtc(1023) == -99;
+    if(!ok){ printf("ECHEC : calibration (t25=%.2f t50=%.2f)\n", t25, t50); echecs++; } else printf("Calibration : correction et NTC, OK\n"); }
   printf(echecs? "\n%d ECHEC(S)\n" : "\nTOUS LES TESTS PASSENT\n", echecs);
   return echecs;
 }

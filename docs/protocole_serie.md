@@ -8,6 +8,7 @@
 | `P,ACTION,MOTIF` | mode manuel : proposition d'action (`ALLUMER` ou `ETEINDRE`) |
 | `E,t_ms,NOM,valeur` | événement : `RELAIS`, `ALARME`, `PROPOSITION_ACCEPTEE`, `PROPOSITION_REFUSEE` |
 | `S,cle=valeur,...` | statistiques (réponse à `STAT`) |
+| `C,v_gen,i_gen,v_bat,i_lampe,adc_ntc,ina_prod,ina_lampe` | valeurs brutes sans calibration, moyennées sur 16 lectures (réponse à `CAL`) : V, A, V, A, ADC 0 à 1023, puis 1 si l'INA219 n°1 ou n°2 est détecté |
 | `I,texte` | information |
 
 Champs de la trame `D` : `t_ms, v_gen, i_gen, p_gen, rpm, v_bat, soc, t_bat, i_lampe, p_lampe, e_prod_wh, e_lampe_wh, relais, mode, alarmes, msg_cycle, tours, cycle_us, ram_libre, scenario`
@@ -28,3 +29,4 @@ Motif d'une proposition : 0 conditions réunies, 1 batterie sous la réserve, 2 
 | `SIM n` | 0 capteurs réels ; 1 vent fort puis calme ; 2 vent faible ; 3 rafale (surtension) ; 4 surchauffe |
 | `RAZ` | remise à zéro des agents et des compteurs |
 | `STAT` | statistiques : cycles, messages, durée maximale d'un cycle, empreinte des décisions, RAM libre |
+| `CAL` | valeurs brutes des capteurs pour la calibration (trame `C`, voir [calibration.md](calibration.md)) |

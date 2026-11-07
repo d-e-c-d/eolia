@@ -13,6 +13,24 @@ struct Mesures {
   uint16_t rpm;
 };
 
+// Valeurs brutes des capteurs, avant toute correction de calibration
+struct Brutes {
+  float vGen, iGen;            // V, A (INA219 n°1)
+  float vBat, iLampe;          // V, A (INA219 n°2)
+  float adcNtc;                // 0..1023
+};
+
+// ---------- Corrections de calibration (coefficients dans config.h) ----------
+inline float corriger(float brut, float gain, float decalage) { return gain * brut + decalage; }
+
+// Pont 5 V, RSERIE, A0, NTC, GND. Renvoie -99 si le capteur est absent ou en court-circuit.
+float temperatureNtc(float adc) {
+  if (adc < 1 || adc > 1022) return -99;
+  float r = NTC_RSERIE * adc / (1023.0 - adc);
+  float invT = 1.0 / 298.15 + log(r / NTC_R0) / NTC_BETA;
+  return 1.0 / invT - 273.15;
+}
+
 // ---------- Lecture du capteur Hall ----------
 volatile uint16_t g_impulsions = 0;
 void isrHall() { g_impulsions++; }
@@ -45,6 +63,25 @@ class Acquisition {
     return okProd_ && okCharge_;
   }
   bool capteursOk() const { return okProd_ && okCharge_; }
+  bool inaProdOk() const { return okProd_; }
+  bool inaChargeOk() const { return okCharge_; }
+
+  // Valeurs brutes moyennées sur n lectures (n >= 1), utilisées par la commande CAL
+  void lireBrutes(Brutes &b, uint8_t n) {
+    b = Brutes{};
+    for (uint8_t k = 0; k < n; k++) {
+      if (okProd_) {
+        b.vGen += inaProd_.getBusVoltage_V() + inaProd_.getShuntVoltage_mV() / 1000.0;
+        b.iGen += inaProd_.getCurrent_mA() / 1000.0;
+      }
+      if (okCharge_) {
+        b.vBat += inaCharge_.getBusVoltage_V();
+        b.iLampe += inaCharge_.getCurrent_mA() / 1000.0;
+      }
+      b.adcNtc += analogRead(PIN_NTC);
+    }
+    b.vGen /= n; b.iGen /= n; b.vBat /= n; b.iLampe /= n; b.adcNtc /= n;
+  }
 
   // scenario = 0 : capteurs réels ; 1..4 : simulation
   void choisirScenario(uint8_t s) { scenario_ = s; pas_ = 0; socSim_ = 60; tSim_ = 25; }
@@ -65,25 +102,19 @@ class Acquisition {
   float socSim_ = 60, tSim_ = 25;
 
   void lireReel(Mesures &m, uint16_t dt_ms) {
-    m.vGen = okProd_ ? inaProd_.getBusVoltage_V() + inaProd_.getShuntVoltage_mV() / 1000.0 : 0;
-    m.iGen = okProd_ ? max(0.0f, inaProd_.getCurrent_mA() / 1000.0f) : 0;
+    Brutes b;
+    lireBrutes(b, 1);
+    m.vGen = okProd_ ? corriger(b.vGen, CAL_VGEN_GAIN, CAL_VGEN_DECALAGE) : 0;
+    m.iGen = okProd_ ? max(0.0f, corriger(b.iGen, CAL_IGEN_GAIN, CAL_IGEN_DECALAGE)) : 0;
     m.pGen = m.vGen * m.iGen;
-    m.vBat = okCharge_ ? inaCharge_.getBusVoltage_V() : 0;
-    m.iLampe = okCharge_ ? max(0.0f, inaCharge_.getCurrent_mA() / 1000.0f) : 0;
+    m.vBat = okCharge_ ? corriger(b.vBat, CAL_VBAT_GAIN, CAL_VBAT_DECALAGE) : 0;
+    m.iLampe = okCharge_ ? max(0.0f, corriger(b.iLampe, CAL_ILAMPE_GAIN, CAL_ILAMPE_DECALAGE)) : 0;
     m.pLampe = m.vBat * m.iLampe;
-    m.tBat = lireNtc();
+    m.tBat = temperatureNtc(b.adcNtc);
     noInterrupts();
     uint16_t n = g_impulsions; g_impulsions = 0;
     interrupts();
     m.rpm = dt_ms ? (uint32_t)n * 60000UL / ((uint32_t)dt_ms * AIMANTS_PAR_TOUR) : 0;
-  }
-
-  float lireNtc() {
-    int adc = analogRead(PIN_NTC);
-    if (adc <= 0 || adc >= 1023) return -99;            // capteur absent ou en court-circuit
-    float r = NTC_RSERIE * adc / (1023.0 - adc);
-    float invT = 1.0 / 298.15 + log(r / NTC_R0) / NTC_BETA;
-    return 1.0 / invT - 273.15;
   }
 
   // Simulation déterministe : même scénario => mêmes mesures, cycle par cycle.
