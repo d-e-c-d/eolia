@@ -45,6 +45,16 @@ const float V_BAT_COUPURE  = 11.8;  // V : coupure de la lampe (décharge profon
 const float V_BAT_REARME   = 12.2;  // V : réarmement après coupure (hystérésis)
 const float T_BAT_MAX      = 45.0;  // °C : surchauffe
 
+// ---------- Estimation de l'état de charge (agent Batterie) ----------
+// Comptage d'énergie : SOC += 100 * (RENDEMENT_CHARGE * P_gen - P_lampe) * dt / CAPACITE_BAT_WH,
+// recalé lentement sur la courbe tension / état de charge quand la batterie ne charge pas.
+const float CAPACITE_BAT_WH  = 84.0;   // Wh : 12 V x 7 Ah, à adapter à la batterie utilisée
+const float RENDEMENT_CHARGE = 0.85;   // part de l'énergie produite réellement stockée (chargeur et batterie)
+const float P_CHARGE_MIN     = 0.5;    // W : en dessous, la batterie est considérée hors charge
+const float R_INTERNE_BAT    = 0.05;   // ohms : compense la chute de tension due au courant de la lampe
+const float TAU_RECALAGE_S   = 600.0;  // s : constante de temps du recalage sur la tension
+const float CAPACITE_SIM_WH  = 0.0222222; // Wh : capacité réduite de la simulation accélérée (un cycle vaut environ une minute)
+
 // ---------- Exigences de confort par défaut (modifiables par l'utilisateur) ----------
 const uint8_t RESERVE_SOC_DEFAUT = 40;  // % de charge à garder en réserve
 const uint8_t HYST_RESERVE       = 10;  // points de % à regagner avant de rallumer

@@ -18,7 +18,7 @@ struct Systeme {
         if(m.type==MSG_DECISION) empreinte = empreinte*31 + cycle*2 + (uint32_t)m.valeur;
         for(int i=0;i<4;i++) if((m.vers==AG_TOUS&&i!=m.de)||m.vers==i) ag[i]->recevoir(m,bus);}}
     toursMax=std::max(toursMax,tours); msgMax=std::max<int>(msgMax,bus.total()-av);}
-  void init(uint8_t sc, bool autoMode, bool verbeux){ acq.choisirScenario(sc); s.consignes.modeAuto=autoMode; s.journal = verbeux? &out : nullptr;
+  void init(uint8_t sc, bool autoMode, bool verbeux){ acq.choisirScenario(sc); b.capaciteWh = CAPACITE_SIM_WH; s.consignes.modeAuto=autoMode; s.journal = verbeux? &out : nullptr;
     bus.publier(AG_SUPERVISEUR,AG_CHARGE,MSG_CONSIGNE,1); bus.publier(AG_SUPERVISEUR,AG_BATTERIE,MSG_CONSIGNE,40); distribuer();}
   void pas(){ g_millis+=200; acq.lire(mes,200,s.relaisFerme); for(auto a:ag) a->percevoir(mes);
     c.cumuler(200/3600000.0); p.agir(bus,200/3600000.0); distribuer(); cycle++; }
@@ -55,6 +55,16 @@ int main(){
   { Systeme S; S.init(2,false,false); for(int i=0;i<5;i++) S.pas(); S.s.repondre(false,S.bus); S.distribuer();
     for(int i=0;i<20;i++) S.pas();
     if(S.s.propositionEnAttente){ printf("ECHEC : propositions repetees apres refus\n"); echecs++; } else printf("Mode manuel : refus respecte, OK\n"); }
+  // Etat de charge : le comptage d'énergie suit la simulation, y compris pendant la charge
+  // (dérive = écart cumulé entre les variations estimée et simulée, tant qu'aucune des deux ne plafonne)
+  for (int sc=1; sc<=4; sc++){ Systeme S; S.init(sc,true,false); float derive=0, ecartMax=0, est=-1, sim=0;
+    for(int i=0;i<300;i++){ S.pas(); float e=S.b.soc, s=S.acq.socSimule();
+      if(est>0.5 && est<99.5 && e>0.5 && e<99.5 && sim>0.5 && sim<99.5 && s>0.5 && s<99.5) derive += std::fabs((e-est)-(s-sim));
+      if(S.b.socInitialise && s>1 && s<99) ecartMax=std::max(ecartMax,std::fabs(e-s));
+      est=e; sim=s; }
+    bool ok = derive<2 && ecartMax<2;
+    printf("Etat de charge scenario %d : estime %.1f%% simule %.1f%% (derive %.2f, ecart max apres recalage %.2f%s) %s\n",
+      sc,S.b.soc,S.acq.socSimule(),derive,ecartMax,S.b.socInitialise?"":", jamais hors charge",ok?"OK":"ECHEC"); if(!ok) echecs++; }
   // Calibration : correction linéaire et modèle bêta de la NTC
   { bool ok = std::fabs(corriger(12.0f, 1.02f, -0.05f) - 12.19f) < 1e-4;
     float t25 = temperatureNtc(511.5f);                 // pont équilibré : R = RSERIE = R0, donc 25 °C

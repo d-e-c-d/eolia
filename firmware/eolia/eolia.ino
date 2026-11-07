@@ -175,6 +175,7 @@ void envoyerConsignes() {
 
 void reinitialiser() {
   agProd = AgentProduction(); agBat = AgentBatterie(); agCharge = AgentCharge();
+  agBat.capaciteWh = acq.scenario() ? CAPACITE_SIM_WH : CAPACITE_BAT_WH;
   bool autoMode = agSup.consignes.modeAuto;
   Consignes c = agSup.consignes;
   agSup = AgentSuperviseur(); agSup.consignes = c; agSup.consignes.modeAuto = autoMode;

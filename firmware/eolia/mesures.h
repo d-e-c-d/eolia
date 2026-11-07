@@ -86,6 +86,7 @@ class Acquisition {
   // scenario = 0 : capteurs réels ; 1..4 : simulation
   void choisirScenario(uint8_t s) { scenario_ = s; pas_ = 0; socSim_ = 60; tSim_ = 25; }
   uint8_t scenario() const { return scenario_; }
+  float socSimule() const { return socSim_; }   // état de charge réel de la simulation, pour les tests
 
   // dt_ms : durée écoulée depuis la lecture précédente ; relaisFerme : lampe alimentée
   void lire(Mesures &m, uint16_t dt_ms, bool relaisFerme) {
@@ -134,7 +135,7 @@ class Acquisition {
     m.iGen = m.vGen > 0.1 ? m.pGen / m.vGen : 0;
     m.rpm = (uint16_t)(vent * 120);
     m.pLampe = relaisFerme ? 3.0 : 0;                                    // lampe LED 3 W
-    socSim_ += (m.pGen * 0.85 - m.pLampe) * 0.25;                          // capacité réduite pour la démo
+    socSim_ += (m.pGen * RENDEMENT_CHARGE - m.pLampe) * (PERIODE_CYCLE_MS / 3600000.0) * 100 / CAPACITE_SIM_WH;
     socSim_ = constrain(socSim_, 0, 100);
     m.vBat = tensionDepuisSoc(socSim_) + (m.pGen > 0.5 ? 0.4 : 0);        // tension relevée pendant la charge
     if (scenario_ == 3 && m.vGen > 25) m.vBat = 14.8;

@@ -57,6 +57,8 @@ class AgentBatterie : public Agent {
  public:
   AgentBatterie() : Agent(AG_BATTERIE) {}
   float soc = 50;
+  float capaciteWh = CAPACITE_BAT_WH;   // remplacée par CAPACITE_SIM_WH en simulation
+  bool socInitialise = false;           // faux tant que la tension n'a pas pu servir de point de départ
   uint8_t alarmes = AL_AUCUNE;
   bool coupureBasse = false;
 
@@ -93,8 +95,7 @@ class AgentBatterie : public Agent {
   bool sousReserve_ = false;
 
   void evaluer(Bus &bus) {
-    // au repos (pas de charge), la tension donne l'état de charge ; sinon on garde la dernière estimation
-    if (pProd_ < 0.5) soc = 0.8 * soc + 0.2 * socDepuisTension(m_.vBat);
+    estimerSoc(PERIODE_CYCLE_MS / 1000.0);
 
     if (m_.vBat < V_BAT_COUPURE) coupureBasse = true;
     else if (m_.vBat > V_BAT_REARME) coupureBasse = false;
@@ -109,6 +110,20 @@ class AgentBatterie : public Agent {
       bus.publier(id_, AG_SUPERVISEUR, MSG_ALARME, a, 1);
     }
     bus.publier(id_, AG_CHARGE, MSG_ETAT_BATTERIE, soc, !coupureBasse);
+  }
+
+  // Comptage d'énergie à chaque cycle (production stockée moins consommation de la lampe),
+  // recalage sur la tension seulement hors charge : pendant la charge, la tension est relevée
+  // par le chargeur et ne dit rien de l'état de charge.
+  void estimerSoc(float dt_s) {
+    float bilanW = RENDEMENT_CHARGE * pProd_ - m_.pLampe;
+    soc += 100.0 * bilanW * (dt_s / 3600.0) / capaciteWh;
+    if (pProd_ < P_CHARGE_MIN && m_.vBat > 1) {
+      float socTension = socDepuisTension(m_.vBat + m_.iLampe * R_INTERNE_BAT);
+      if (!socInitialise) { soc = socTension; socInitialise = true; }   // premier point de départ fiable
+      else soc += (socTension - soc) * dt_s / TAU_RECALAGE_S;            // corrige la dérive du comptage
+    }
+    soc = constrain(soc, 0, 100);
   }
 };
 

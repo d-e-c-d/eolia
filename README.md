@@ -21,7 +21,7 @@ grâce à **quatre agents** qui négocient entre eux par un bus de messages :
 | Agent | Rôle |
 |---|---|
 | **Production** | Mesure le générateur (INA219 n°1, capteur Hall), publie la puissance, détecte la surtension |
-| **Batterie** | Estime l'état de charge, surveille tension et température, accorde ou refuse la décharge |
+| **Batterie** | Estime l'état de charge (comptage d'énergie recalé sur la tension), surveille tension et température, accorde ou refuse la décharge |
 | **Charge** | Porte l'exigence de confort (lampe voulue) et négocie l'allumage avec la batterie |
 | **Superviseur** | Mode autonome ou manuel, alarmes (LED, buzzer), écran LCD, commande du relais |
 
@@ -70,6 +70,7 @@ tests/
 docs/
   cablage.md         brochage et circuit de puissance
   calibration.md     calibration des INA219 et de la NTC au multimètre
+  etat_de_charge.md  estimation de l'état de charge et réglage de ses paramètres
   protocole_serie.md trames Arduino vers PC et commandes PC vers Arduino
 platformio.ini       compilation avec PlatformIO
 ```
@@ -124,7 +125,7 @@ PC sont fonctionnels ; la logique des agents est validée en simulation.
 Prochaines étapes :
 
 1. Calibrer les INA219 et la NTC au multimètre : l'assistant `--calib` est prêt, la procédure est dans [`docs/calibration.md`](docs/calibration.md).
-2. Affiner l'estimation de l'état de charge (comptage d'énergie pendant la charge).
+2. Régler `CAPACITE_BAT_WH` et mesurer `RENDEMENT_CHARGE` sur la vraie batterie (procédure dans [`docs/etat_de_charge.md`](docs/etat_de_charge.md)).
 3. Tracer les courbes puissance / vitesse de rotation à partir des CSV pour le poster.
 
 ---
