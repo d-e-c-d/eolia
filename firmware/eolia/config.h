@@ -22,6 +22,8 @@ const uint8_t PIN_NTC      = A0;  // 5 V -> 10 k -> A0 -> NTC 10 k -> GND
 const uint8_t ADR_INA_PROD   = 0x40; // INA219 n°1 : sortie générateur
 const uint8_t ADR_INA_CHARGE = 0x41; // INA219 n°2 : batterie vers lampe (pont A0 soudé)
 const uint8_t AIMANTS_PAR_TOUR = 1;  // nombre d'aimants collés sur l'axe
+const uint16_t ANTI_REBOND_HALL_US = 2000;  // fronts plus rapprochés ignorés (30 000 tr/min avec un aimant)
+const uint16_t ARRET_HALL_MS = 2000;        // sans front pendant ce délai, le rotor est considéré à l'arrêt
 
 // ---------- Calibration (python outils/supervision.py --calib, voir docs/calibration.md) ----------
 // Valeur corrigée = gain * valeur brute + décalage. Valeurs neutres tant que rien n'est calibré.

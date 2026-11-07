@@ -32,8 +32,28 @@ float temperatureNtc(float adc) {
 }
 
 // ---------- Lecture du capteur Hall ----------
-volatile uint16_t g_impulsions = 0;
-void isrHall() { g_impulsions++; }
+// On mesure la période entre deux fronts (résolution de quelques µs) plutôt que de compter
+// les impulsions sur un cycle de 200 ms, qui ne donnerait que des multiples de 300 tr/min.
+volatile uint32_t g_dernierFrontUs = 0;   // instant du dernier front retenu
+volatile uint32_t g_sommePeriodesUs = 0;  // somme des périodes mesurées depuis la dernière lecture
+volatile uint16_t g_nbPeriodes = 0;
+void isrHall() {
+  uint32_t t = micros();
+  uint32_t d = t - g_dernierFrontUs;
+  if (d < ANTI_REBOND_HALL_US) return;
+  if (d < ARRET_HALL_MS * 1000UL) { g_sommePeriodesUs += d; g_nbPeriodes++; }  // le premier front après un arrêt ne donne pas de période
+  g_dernierFrontUs = t;
+}
+
+// Vitesse de rotation à partir des périodes mesurées pendant le cycle.
+// Sans nouveau front, la dernière période est gardée, mais la vitesse ne peut pas dépasser
+// ce qu'indique le temps écoulé depuis le dernier front : elle décroît donc quand le rotor ralentit.
+uint16_t rpmHall(uint32_t sommeUs, uint16_t nb, uint32_t depuisDernierUs, uint32_t &periodeUs) {
+  if (nb) periodeUs = sommeUs / nb;
+  if (periodeUs == 0 || depuisDernierUs >= ARRET_HALL_MS * 1000UL) { periodeUs = 0; return 0; }
+  uint32_t p = max(periodeUs, depuisDernierUs);
+  return 60000000UL / ((uint32_t)p * AIMANTS_PAR_TOUR);
+}
 
 // ---------- Courbe tension / état de charge d'une batterie plomb 12 V au repos ----------
 float socDepuisTension(float v) {
@@ -88,9 +108,9 @@ class Acquisition {
   uint8_t scenario() const { return scenario_; }
   float socSimule() const { return socSim_; }   // état de charge réel de la simulation, pour les tests
 
-  // dt_ms : durée écoulée depuis la lecture précédente ; relaisFerme : lampe alimentée
-  void lire(Mesures &m, uint16_t dt_ms, bool relaisFerme) {
-    if (scenario_ == 0) lireReel(m, dt_ms);
+  // dt_ms : durée du cycle (inutilisée depuis la mesure par période) ; relaisFerme : lampe alimentée
+  void lire(Mesures &m, uint16_t /* dt_ms */, bool relaisFerme) {
+    if (scenario_ == 0) lireReel(m);
     else simuler(m, relaisFerme);
   }
 
@@ -101,8 +121,9 @@ class Acquisition {
   uint8_t scenario_ = 0;
   uint16_t pas_ = 0;
   float socSim_ = 60, tSim_ = 25;
+  uint32_t periodeHallUs_ = 0;
 
-  void lireReel(Mesures &m, uint16_t dt_ms) {
+  void lireReel(Mesures &m) {
     Brutes b;
     lireBrutes(b, 1);
     m.vGen = okProd_ ? corriger(b.vGen, CAL_VGEN_GAIN, CAL_VGEN_DECALAGE) : 0;
@@ -113,9 +134,10 @@ class Acquisition {
     m.pLampe = m.vBat * m.iLampe;
     m.tBat = temperatureNtc(b.adcNtc);
     noInterrupts();
-    uint16_t n = g_impulsions; g_impulsions = 0;
+    uint32_t somme = g_sommePeriodesUs, dernier = g_dernierFrontUs; uint16_t nb = g_nbPeriodes;
+    g_sommePeriodesUs = 0; g_nbPeriodes = 0;
     interrupts();
-    m.rpm = dt_ms ? (uint32_t)n * 60000UL / ((uint32_t)dt_ms * AIMANTS_PAR_TOUR) : 0;
+    m.rpm = rpmHall(somme, nb, micros() - dernier, periodeHallUs_);
   }
 
   // Simulation déterministe : même scénario => mêmes mesures, cycle par cycle.

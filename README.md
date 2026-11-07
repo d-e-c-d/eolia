@@ -64,6 +64,7 @@ firmware/eolia/
   config.h           brochage, seuils et coefficients de calibration
 outils/
   supervision.py     affichage, enregistrement CSV, commandes, banc d'essai, calibration
+  courbes.py         courbes puissance et tension selon la vitesse de rotation (poster)
 tests/
   test_natif.cpp     tests de la logique des agents sur PC
   stubs/             substituts d'Arduino.h, Wire.h, Adafruit_INA219.h
@@ -87,6 +88,10 @@ pip install pyserial
 python outils/supervision.py --port COM3          # mesures, CSV, commandes
 python outils/supervision.py --port COM3 --banc   # banc d'essai automatique
 python outils/supervision.py --port COM3 --calib  # calibration au multimètre
+
+# Courbes pour le poster (PNG 300 dpi et SVG dans figures/)
+pip install matplotlib numpy
+python outils/courbes.py mesures_*.csv
 
 # Tests sans matériel
 g++ -std=c++17 -Itests/stubs -o test tests/test_natif.cpp && ./test
@@ -126,7 +131,7 @@ Prochaines étapes :
 
 1. Calibrer les INA219 et la NTC au multimètre : l'assistant `--calib` est prêt, la procédure est dans [`docs/calibration.md`](docs/calibration.md).
 2. Régler `CAPACITE_BAT_WH` et mesurer `RENDEMENT_CHARGE` sur la vraie batterie (procédure dans [`docs/etat_de_charge.md`](docs/etat_de_charge.md)).
-3. Tracer les courbes puissance / vitesse de rotation à partir des CSV pour le poster.
+3. Enregistrer des essais au ventilateur à plusieurs régimes, puis tracer les courbes avec `outils/courbes.py`.
 
 ---
 

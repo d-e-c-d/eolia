@@ -65,6 +65,14 @@ int main(){
     bool ok = derive<2 && ecartMax<2;
     printf("Etat de charge scenario %d : estime %.1f%% simule %.1f%% (derive %.2f, ecart max apres recalage %.2f%s) %s\n",
       sc,S.b.soc,S.acq.socSimule(),derive,ecartMax,S.b.socInitialise?"":", jamais hors charge",ok?"OK":"ECHEC"); if(!ok) echecs++; }
+  // Capteur Hall : vitesse à partir de la période, sans quantification par pas de 300 tr/min
+  { uint32_t per = 0; bool ok = true;
+    ok &= rpmHall(3*57143UL, 3, 1000, per) == 1049;        // 3 périodes de 57,143 ms : 1050 tr/min (arrondi inférieur)
+    ok &= rpmHall(0, 0, 50000UL, per) == 1049;             // pas de front depuis 50 ms (< période) : dernière période gardée
+    ok &= rpmHall(0, 0, 120000UL, per) == 500;             // 120 ms sans front : au plus 500 tr/min
+    ok &= rpmHall(0, 0, ARRET_HALL_MS*1000UL, per) == 0 && per == 0;   // arrêt
+    ok &= rpmHall(0, 0, 10, per) == 0;                     // pas de période connue
+    if(!ok){ printf("ECHEC : vitesse de rotation\n"); echecs++; } else printf("Capteur Hall : vitesse par la periode, OK\n"); }
   // Calibration : correction linéaire et modèle bêta de la NTC
   { bool ok = std::fabs(corriger(12.0f, 1.02f, -0.05f) - 12.19f) < 1e-4;
     float t25 = temperatureNtc(511.5f);                 // pont équilibré : R = RSERIE = R0, donc 25 °C
